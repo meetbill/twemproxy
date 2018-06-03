@@ -1,6 +1,34 @@
 # twemproxy (nutcracker) [![Build Status](https://secure.travis-ci.org/twitter/twemproxy.png)](http://travis-ci.org/twitter/twemproxy)
 
-**twemproxy** (pronounced "two-em-proxy"), aka **nutcracker** is a fast and lightweight proxy for [memcached](http://www.memcached.org/) and [redis](http://redis.io/) protocol. It was built primarily to reduce the number of connections to the caching servers on the backend. This, together with protocol pipelining and sharding enables you to horizontally scale your distributed caching architecture.
+
+<!-- vim-markdown-toc GFM -->
+
+* [Twemproxy 学习](#twemproxy-学习)
+* [Build](#build)
+* [Features](#features)
+* [Help](#help)
+* [Zero Copy 零拷贝](#zero-copy-零拷贝)
+* [Configuration](#configuration)
+* [Observability](#observability)
+* [Pipelining](#pipelining)
+* [Deployment](#deployment)
+* [Packages](#packages)
+    * [Ubuntu](#ubuntu)
+        * [PPA Stable](#ppa-stable)
+        * [PPA Daily](#ppa-daily)
+* [Utils](#utils)
+* [Companies using Twemproxy in Production](#companies-using-twemproxy-in-production)
+* [Issues and Support](#issues-and-support)
+* [Committers](#committers)
+* [License](#license)
+
+<!-- vim-markdown-toc -->
+
+Nutcracker，又称 Twemproxy（读音："two-em-proxy"）是支持 [memcached](http://www.memcached.org/) 和 [redis](http://redis.io/) 协议的快速、轻量级代理；它的建立旨在减少后端缓存服务器上的连接数量；再结合管道技术（pipelining*）、及分片技术可以横向扩展分布式缓存架构；
+
+## Twemproxy 学习
+
+[学习笔记](https://github.com/meetbill/twemproxy/wiki)
 
 ## Build
 
@@ -56,25 +84,25 @@ A quick checklist:
                       [-i stats interval] [-p pid file] [-m mbuf size]
 
     Options:
-      -h, --help             : this help
-      -V, --version          : show version and exit
-      -t, --test-conf        : test configuration for syntax errors and exit
-      -d, --daemonize        : run as a daemon
-      -D, --describe-stats   : print stats description and exit
-      -v, --verbose=N        : set logging level (default: 5, min: 0, max: 11)
-      -o, --output=S         : set logging file (default: stderr)
-      -c, --conf-file=S      : set configuration file (default: conf/nutcracker.yml)
-      -s, --stats-port=N     : set stats monitoring port (default: 22222)
-      -a, --stats-addr=S     : set stats monitoring ip (default: 0.0.0.0)
-      -i, --stats-interval=N : set stats aggregation interval in msec (default: 30000 msec)
-      -p, --pid-file=S       : set pid file (default: off)
-      -m, --mbuf-size=N      : set size of mbuf chunk in bytes (default: 16384 bytes)
+      -h, --help             : this help  查看帮助文档，显示命令选项
+      -V, --version          : show version and exit  查看 nutcracker 版本
+      -t, --test-conf        : test configuration for syntax errors and exit  测试配置文件的正确性
+      -d, --daemonize        : run as a daemon  以守护进程运行
+      -D, --describe-stats   : print stats description and exit 打印状态描述
+      -v, --verbose=N        : set logging level (default: 5, min: 0, max: 11) 设置日志级别
+      -o, --output=S         : set logging file (default: stderr) 设置日志输出路径，默认为标准错误输出
+      -c, --conf-file=S      : set configuration file (default: conf/nutcracker.yml) 指定配置文件路径
+      -s, --stats-port=N     : set stats monitoring port (default: 22222) 设置状态监控端口
+      -a, --stats-addr=S     : set stats monitoring ip (default: 0.0.0.0) 设置状态监控 IP
+      -i, --stats-interval=N : set stats aggregation interval in msec (default: 30000 msec) 设置状态聚合间隔
+      -p, --pid-file=S       : set pid file (default: off) 指定进程 pid 文件路径
+      -m, --mbuf-size=N      : set size of mbuf chunk in bytes (default: 16384 bytes) 设置 mbuf 块大小，默认 16K
 
-## Zero Copy
+## Zero Copy 零拷贝
 
-In twemproxy, all the memory for incoming requests and outgoing responses is allocated in mbuf. Mbuf enables zero-copy because the same buffer on which a request was received from the client is used for forwarding it to the server. Similarly the same mbuf on which a response was received from the server is used for forwarding it to the client.
+在 twemproxy 中，传入请求和传出响应的所有内存都在 mbuf 中分配。接收请求的 mbuf 同时会用于转发到 backend，类似地，从 backend 接收响应的 mbuf 同时也会用于转发到 client，这样做就避免了内存拷贝。
 
-Furthermore, memory for mbufs is managed using a reuse pool. This means that once mbuf is allocated, it is not deallocated, but just put back into the reuse pool. By default each mbuf chunk is set to 16K bytes in size. There is a trade-off between the mbuf size and number of concurrent connections twemproxy can support. A large mbuf size reduces the number of read syscalls made by twemproxy when reading requests or responses. However, with a large mbuf size, every active connection would use up 16K bytes of buffer which might be an issue when twemproxy is handling large number of concurrent connections from clients. When twemproxy is meant to handle a large number of concurrent client connections, you should set chunk size to a small value like 512 bytes using the -m or --mbuf-size=N argument.
+此外，mbuf 使用内存池，一旦分配就不再释放，当一个请求结束时，它所使用的 mbuf 会放回内存池。一个 mbuf 占 16K，这个大小需要在 I/O 性能和连接并发数之间做取舍，mbuf 尺寸越大，对 socket 的读写系统调用次数越少，但整个系统可支持的并发数也越小。如果希望支持更高的 client 并发请求数，可以把 mbuf 的尺寸设置小一点（通过 -m 选项）。
 
 ## Configuration
 
@@ -95,22 +123,23 @@ Twemproxy can be configured through a YAML file specified by the -c or --conf-fi
  + hsieh
  + murmur
  + jenkins
-+ **hash_tag**: A two character string that specifies the part of the key used for hashing. Eg "{}" or "$$". [Hash tag](notes/recommendation.md#hash-tags) enable mapping different keys to the same server as long as the part of the key within the tag is the same.
++ **hash_tag**: hash_tag 允许根据 key 的一个部分来计算 key 的 hash 值。hash_tag 由两个字符组成，一个是 hash_tag 的开始，另外一个是 hash_tag 的结束，在 hash_tag 的开始和结束之间，是将用于计算 key 的 hash 值的部分，计算的结果会用于选择服务器。
+ *+ 例如：如果 hash_tag 被定义为”{}”，那么 key 值为"user:{user1}:ids"和"user:{user1}:tweets"的 hash 值都是基于”user1”，最终会被映射到相同的服务器。而"user:user1:ids"将会使用整个 key 来计算 hash，可能会被映射到不同的服务器。
 + **distribution**: The key distribution mode. Possible values are:
- + ketama
- + modula
- + random
-+ **timeout**: The timeout value in msec that we wait for to establish a connection to the server or receive a response from a server. By default, we wait indefinitely.
-+ **backlog**: The TCP backlog argument. Defaults to 512.
-+ **preconnect**: A boolean value that controls if twemproxy should preconnect to all the servers in this pool on process start. Defaults to false.
-+ **redis**: A boolean value that controls if a server pool speaks redis or memcached protocol. Defaults to false.
+ + ketama 一致性 hash 算法，会根据服务器构造出一个 hash ring，并为 ring 上的节点分配 hash 范围。ketama 的优势在于单个节点添加、删除之后，会最大程度上保持整个群集中缓存的 key 值可以被重用。
+ + modula 根据 key 值的 hash 值取模，根据取模的结果选择对应的服务器；
+ + random 无论 key 值的 hash 是什么，都随机的选择一个服务器作为 key 值操作的目标；
++ **timeout**: 单位是毫秒，是连接到 server 的超时值。默认是永久等待。
++ **backlog**: 监听 TCP 的 backlog（连接等待队列）的长度，默认是 512。
++ **preconnect**: 是一个 boolean 值，指示 twemproxy 是否应该预连接 pool 中的 server。默认是 false。
++ **redis**: 是一个 boolean 值，用来识别到服务器的通讯协议是 redis 还是 memcached。默认是 false。
 + **redis_auth**: Authenticate to the Redis server on connect.
 + **redis_db**: The DB number to use on the pool servers. Defaults to 0. Note: Twemproxy will always present itself to clients as DB 0.
 + **server_connections**: The maximum number of connections that can be opened to each server. By default, we open at most 1 server connection.
-+ **auto_eject_hosts**: A boolean value that controls if server should be ejected temporarily when it fails consecutively server_failure_limit times. See [liveness recommendations](notes/recommendation.md#liveness) for information. Defaults to false.
-+ **server_retry_timeout**: The timeout value in msec to wait for before retrying on a temporarily ejected server, when auto_eject_host is set to true. Defaults to 30000 msec.
-+ **server_failure_limit**: The number of consecutive failures on a server that would lead to it being temporarily ejected when auto_eject_host is set to true. Defaults to 2.
-+ **servers**: A list of server address, port and weight (name:port:weight or ip:port:weight) for this server pool.
++ **auto_eject_hosts**: 是一个 boolean 值，用于控制 twemproxy 是否应该根据 server 的连接状态重建群集。这个连接状态是由 server_failure_limit 阀值来控制。 默认是 false。
++ **server_retry_timeout**: 单位是毫秒，控制服务器连接的时间间隔，在 auto_eject_host 被设置为 true 的时候产生作用。默认是 30000 毫秒。
++ **server_failure_limit**: 控制连接服务器的次数，在 auto_eject_host 被设置为 true 的时候产生作用。默认是 2。
++ **servers**: 一个 pool 中的服务器的地址、端口和权重的列表，包括一个可选的服务器的名字，如果提供服务器的名字，将会使用它决定 server 的次序，从而提供对应的一致性 hash 的 hash ring。否则，将使用 server 被定义的次序。
 
 
 For example, the configuration file in [conf/nutcracker.yml](conf/nutcracker.yml), also shown below, configures 5 server pools with names - _alpha_, _beta_, _gamma_, _delta_ and omega. Clients that intend to send requests to one of the 10 servers in pool delta connect to port 22124 on 127.0.0.1. Clients that intend to send request to one of 2 servers in pool omega connect to unix path /tmp/gamma. Requests sent to pool alpha and omega have no timeout and might require timeout functionality to be implemented on the client side. On the other hand, requests sent to pool beta, gamma and delta timeout after 400 msec, 400 msec and 100 msec respectively when no response is received from the server. Of the 5 server pools, only pools alpha, gamma and delta are configured to use server ejection and hence are resilient to server failures. All the 5 server pools use ketama consistent hashing for key distribution with the key hasher for pools alpha, beta, gamma and delta set to fnv1a_64 while that for pool omega set to hsieh. Also only pool beta uses [nodes names](notes/recommendation.md#node-names-for-consistent-hashing) for consistent hashing, while pool alpha, gamma, delta and omega use 'host:port:weight' for consistent hashing. Finally, only pool alpha and beta can speak the redis protocol, while pool gamma, delta and omega speak memcached protocol.
@@ -219,11 +248,10 @@ Logging in twemproxy is only available when twemproxy is built with logging enab
 
 ## Pipelining
 
-Twemproxy enables proxying multiple client connections onto one or few server connections. This architectural setup makes it ideal for pipelining requests and responses and hence saving on the round trip time.
+Twemproxy 可以同时接收很多 client 端的请求，并仅通过一个或几个连接回源，这种结构很适合使用流水线处理请求和响应，从而节省 TCP 往返时间。
+例如，Twemproxy 正在同时代理 3 个 client 端的请求，分别是：'get key\r\n'、'set key 0 0 3\r\nval\r\n'和'delete key\r\n' '，Twemproxy 可以将这 3 个请求打包成一个消息发送给后端的 redis： 'get key\r\nset key 0 0 3\r\nval\r\ndelete key\r\n'。
 
-For example, if twemproxy is proxying three client connections onto a single server and we get requests - 'get key\r\n', 'set key 0 0 3\r\nval\r\n' and 'delete key\r\n' on these three connections respectively, twemproxy would try to batch these requests and send them as a single message onto the server connection as 'get key\r\nset key 0 0 3\r\nval\r\ndelete key\r\n'.
-
-Pipelining is the reason why twemproxy ends up doing better in terms of throughput even though it introduces an extra hop between the client and server.
+pipelining 也是 Twemproxy 高性能的原因之一。
 
 ## Deployment
 
