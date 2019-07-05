@@ -371,8 +371,25 @@ redis_error(struct msg *r)
  *
  * Nutcracker only supports the Redis unified protocol for requests.
  */
+/*
+*3
+$3
+set
+$4
+wang
+$3
+111
++OK
+*2
+$3
+get
+$4
+wang
+$3
+111
+*/
 void
-redis_parse_req(struct msg *r)
+redis_parse_req(struct msg *r)  // redis命令解析
 {
     struct mbuf *b;
     uint8_t *p, *m;
@@ -426,7 +443,7 @@ redis_parse_req(struct msg *r)
         switch (state) {
 
         case SW_START:
-        case SW_NARG:
+        case SW_NARG: //解析命令有几个参数，例如set wang 123,则就是解析*3，表示有三个参数
             if (r->token == NULL) {
                 if (ch != '*') {
                     goto error;
@@ -436,7 +453,7 @@ redis_parse_req(struct msg *r)
                 r->narg_start = p;
                 r->rnarg = 0;
                 state = SW_NARG;
-            } else if (isdigit(ch)) {
+            } else if (isdigit(ch)) { // 参数个数转换为数字
                 r->rnarg = r->rnarg * 10 + (uint32_t)(ch - '0');
             } else if (ch == CR) {
                 if (r->rnarg == 0) {
@@ -464,6 +481,17 @@ redis_parse_req(struct msg *r)
 
             break;
 
+        /*
+        *3
+        $3
+        set
+        $4
+        wang
+        $3
+        111
+        */
+        // 解析上面的 $3  $4  $3 字符串
+        // 解析每个命令字符串中的 arg，例如 set wang 111,则这里就是解析 set 字符串、yang 字符串、111 字符串的长度 $3  $4  $3
         case SW_REQ_TYPE_LEN:
             if (r->token == NULL) {
                 if (ch != '$') {
