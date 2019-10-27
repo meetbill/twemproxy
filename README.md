@@ -124,7 +124,7 @@ Twemproxy can be configured through a YAML file specified by the -c or --conf-fi
   + murmur
   + jenkins
 + **hash_tag**: hash_tag 允许根据 key 的一个部分来计算 key 的 hash 值。hash_tag 由两个字符组成，一个是 hash_tag 的开始，另外一个是 hash_tag 的结束，在 hash_tag 的开始和结束之间，是将用于计算 key 的 hash 值的部分，计算的结果会用于选择服务器。
-  *+ 例如：如果 hash_tag 被定义为”{}”，那么 key 值为"user:{user1}:ids"和"user:{user1}:tweets"的 hash 值都是基于”user1”，最终会被映射到相同的服务器。而"user:user1:ids"将会使用整个 key 来计算 hash，可能会被映射到不同的服务器。
+  + 例如：如果 hash_tag 被定义为”{}”，那么 key 值为"user:{user1}:ids"和"user:{user1}:tweets"的 hash 值都是基于”user1”，最终会被映射到相同的服务器。而"user:user1:ids"将会使用整个 key 来计算 hash，可能会被映射到不同的服务器。
 + **distribution**: The key distribution mode. Possible values are:
   + ketama 一致性 hash 算法，会根据服务器构造出一个 hash ring，并为 ring 上的节点分配 hash 范围。ketama 的优势在于单个节点添加、删除之后，会最大程度上保持整个群集中缓存的 key 值可以被重用。
   + modula 根据 key 值的 hash 值取模，根据取模的结果选择对应的服务器；
