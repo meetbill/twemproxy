@@ -111,24 +111,24 @@ Twemproxy can be configured through a YAML file specified by the -c or --conf-fi
 + **listen**: The listening address and port (name:port or ip:port) or an absolute path to sock file (e.g. /var/run/nutcracker.sock) for this server pool.
 + **client_connections**: The maximum number of connections allowed from redis clients. Unlimited by default, though OS-imposed limitations will still apply.
 + **hash**: The name of the hash function. Possible values are:
- + one_at_a_time
- + md5
- + crc16
- + crc32 (crc32 implementation compatible with [libmemcached](http://libmemcached.org/))
- + crc32a (correct crc32 implementation as per the spec)
- + fnv1_64
- + fnv1a_64
- + fnv1_32
- + fnv1a_32
- + hsieh
- + murmur
- + jenkins
+  + one_at_a_time
+  + md5
+  + crc16
+  + crc32 (crc32 implementation compatible with [libmemcached](http://libmemcached.org/))
+  + crc32a (correct crc32 implementation as per the spec)
+  + fnv1_64
+  + fnv1a_64
+  + fnv1_32
+  + fnv1a_32
+  + hsieh
+  + murmur
+  + jenkins
 + **hash_tag**: hash_tag 允许根据 key 的一个部分来计算 key 的 hash 值。hash_tag 由两个字符组成，一个是 hash_tag 的开始，另外一个是 hash_tag 的结束，在 hash_tag 的开始和结束之间，是将用于计算 key 的 hash 值的部分，计算的结果会用于选择服务器。
- *+ 例如：如果 hash_tag 被定义为”{}”，那么 key 值为"user:{user1}:ids"和"user:{user1}:tweets"的 hash 值都是基于”user1”，最终会被映射到相同的服务器。而"user:user1:ids"将会使用整个 key 来计算 hash，可能会被映射到不同的服务器。
+  *+ 例如：如果 hash_tag 被定义为”{}”，那么 key 值为"user:{user1}:ids"和"user:{user1}:tweets"的 hash 值都是基于”user1”，最终会被映射到相同的服务器。而"user:user1:ids"将会使用整个 key 来计算 hash，可能会被映射到不同的服务器。
 + **distribution**: The key distribution mode. Possible values are:
- + ketama 一致性 hash 算法，会根据服务器构造出一个 hash ring，并为 ring 上的节点分配 hash 范围。ketama 的优势在于单个节点添加、删除之后，会最大程度上保持整个群集中缓存的 key 值可以被重用。
- + modula 根据 key 值的 hash 值取模，根据取模的结果选择对应的服务器；
- + random 无论 key 值的 hash 是什么，都随机的选择一个服务器作为 key 值操作的目标；
+  + ketama 一致性 hash 算法，会根据服务器构造出一个 hash ring，并为 ring 上的节点分配 hash 范围。ketama 的优势在于单个节点添加、删除之后，会最大程度上保持整个群集中缓存的 key 值可以被重用。
+  + modula 根据 key 值的 hash 值取模，根据取模的结果选择对应的服务器；
+  + random 无论 key 值的 hash 是什么，都随机的选择一个服务器作为 key 值操作的目标；
 + **timeout**: 单位是毫秒，是连接到 server 的超时值。默认是永久等待。
 + **backlog**: 监听 TCP 的 backlog（连接等待队列）的长度，默认是 512。
 + **preconnect**: 是一个 boolean 值，指示 twemproxy 是否应该预连接 pool 中的 server。默认是 false。
